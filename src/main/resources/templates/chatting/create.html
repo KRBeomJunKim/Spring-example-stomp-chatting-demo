@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="~{layout/mainLayout :: layout (~{::title}, ~{::main}, ~{::script})}">
+<title>ChattingDemo-createRoom</title>
+<main>
+<div class="d-flex flex-column align-items-center">
+    <div>
+        <div class="fs-2 mb-3">Create Chatting Room</div>
+    </div>
+    <div class="d-flex flex-column align-items-center">
+        <form th:action="@{/chatting/room/create}" th:method="post" class="d-flex flex-column align-items-center">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <div class="mb-3">
+                <label for="input_name">room name : </label>
+                <input id="input_name" th:name="name"/>
+            </div>
+            <button>Create Chatting Room</button>
+        </form>
+    </div>
+</div>
+</main>
+<script></script>
+</html>

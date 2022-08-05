@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout/mainLayout :: layout (~{::title}, ~{::main}, ~{::script})}">
+<title>ChattingDemo-home</title>
+<main>
+    <div class="d-flex flex-column align-items-center">
+        <div class="mb-4 fs-1">
+            <div>Chatting Demo with Spring Socket</div>
+        </div>
+        <div class="btn-group mb-4 d-flex justify-content-between align-items-center w-75">
+            <a class="btn btn-primary me-4" th:href="@{/account/sign-up}" sec:authorize="isAnonymous()">Sign Up</a>
+            <a class="btn btn-primary me-4" th:href="@{/login}" sec:authorize="isAnonymous()">Sign In</a>
+            <a class="btn btn-primary me-4" th:href="@{/logout}" sec:authorize="isAuthenticated()">Logout</a>
+            <a class="btn btn-primary me-4" th:href="@{/chatting/room/create}" sec:authorize="isAuthenticated()">Create
+                Chatting Room</a>
+        </div>
+        <div class="d-flex flex-row">
+            <div class="connect-users list-group me-4">
+                <div class="list-group-item">Connected User</div>
+                <div th:id="${participant.getUsername()}" class="list-group-item"
+                     th:each="participant : ${mainRoom.getParticipants()}">
+                    <div th:text="${participant.getUsername()}">name</div>
+                </div>
+            </div>
+            <div>
+                <table class="table table-striped">
+                    <thead>
+                    <tr>
+                        <th scope="col">Room Name</th>
+                        <th scope="col">Owner</th>
+                    </tr>
+                    </thead>
+                    <tbody class="current-rooms">
+                    <tr th:id="${userRoom.getName()}" th:each="userRoom : ${userRooms}">
+                        <td th:text="${userRoom.getName()}">room name</td>
+                        <td th:text="${userRoom.getAccount().getUsername()}">owner</td>
+                        <td>
+                            <button class="btn btn-dark" th:onclick="'location.href=\'/chatting/room/' + ${userRoom.getId()} + '\''">
+                                Enter the Room
+                            </button>
+                        </td>
+                    </tr>
+                    </tbody>
+
+                </table>
+            </div>
+        </div>
+    </div>
+</main>
+<script>
+    const socket = new SockJS('/gs');
+    const stompClient = Stomp.over(socket);
+
+    stompClient.connect({}, () => {
+        stompClient.subscribe('/topic/chatting/main/participants', (message) => {
+            let body = JSON.parse(message.body);
+            if (body.type === 'ARRIVE') {
+                const outer = document.createElement('div');
+                outer.id = body.username;
+                outer.classList.add('list-group-item');
+
+                const inner = document.createElement('div');
+                inner.innerText = body.username;
+                outer.append(inner);
+
+                document.querySelector('.connect-users').append(outer);
+            } else if (body.type === 'LEAVE') {
+                document.querySelector(`#${body.username}`).remove();
+            }
+            console.log(message);
+        });
+        stompClient.subscribe('/topic/chatting/rooms', (message) => {
+            let body = JSON.parse(message.body);
+            if (body.type === 'CREATED') {
+                const outer = document.createElement('tr');
+                outer.id = body.roomName;
+
+                const roomName = document.createElement('td');
+                roomName.innerText = body.roomName;
+                outer.append(roomName);
+
+                const ownerName = document.createElement('td');
+                ownerName.innerText = body.ownerName;
+                outer.append(ownerName);
+
+                const enterRoomTd = document.createElement('td');
+                const enterRoom = document.createElement('button');
+                enterRoom.innerText = 'Enter the Room';
+                enterRoom.classList.add('btn');
+                enterRoom.classList.add('btn-dark');
+                enterRoomTd.append(enterRoom);
+                enterRoom.onclick = (event) => {
+                    location.href=`/chatting/room/${body.roomId}`;
+                }
+                outer.append(enterRoomTd);
+
+                document.querySelector('.current-rooms').append(outer);
+            }
+            console.log(message);
+
+        })
+        stompClient.send('/app/chatting/main/participant/arrive', {}, {});
+    });
+
+    window.onbeforeunload = (event) => {
+        event.preventDefault();
+        if (stompClient !== null) {
+            stompClient.send('/app/chatting/main/participant/leave', {}, {});
+            stompClient.disconnect();
+        }
+    };
+</script>
+</html>

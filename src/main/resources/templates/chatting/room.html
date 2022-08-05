@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/mainLayout :: layout (~{::title}, ~{::main}, ~{::script})}">
+<title>ChattingDemo-createRoom</title>
+<main class="w-100">
+    <div class="d-flex flex-column align-items-center mb-4">
+        <div class="fs-3 mb-3">Chatting Room</div>
+        <div class="d-flex flex-column align-items-center">
+            <div th:class="mb-2" th:text="'Room name : ' + ${room.getName()}">Room Name:</div>
+            <div th:text="'Owner : ' + ${room.getAccount().getUsername()}">Owner:</div>
+        </div>
+    </div>
+    <div>
+        <div class="d-flex flex-row w-100">
+            <div class="connect-users list-group me-4 w-25">
+                <div class="list-group-item">Connected User</div>
+                <div th:id="${participant.getUsername()}" class="list-group-item"
+                     th:each="participant : ${room.getParticipants()}">
+                    <div th:text="${participant.getUsername()}">username</div>
+                </div>
+            </div>
+            <div class="w-75" style="height: 75vh">
+                <div class="text-center">Messages</div>
+                <div id="message_box" class="list-group list-group-flush h-75 border border-primary overflow-auto">
+                    <div th:id="${chatting.getId()}" class="list-group-item mb-2" th:each="chatting : ${chattings}">
+                        <div th:text="'Author : ' + ${chatting.getAccount().getUsername()}">Author</div>
+                        <div th:text="${chatting.getMessage()}">body</div>
+                        <div th:text="${chatting.getCreatedDate()}">createdDate</div>
+                    </div>
+                </div>
+                <div class="d-flex">
+                    <input id="input_message" class="form-control w-75" type="text"/>
+                    <button id="input_message_btn" class="btn-primary w-25">Send a Message</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+<script>
+    const socket = new SockJS('/gs');
+    const stompClient = Stomp.over(socket);
+    const roomId = [[${room.getId()}]];
+
+    const messageBox = document.querySelector('#message_box');
+
+    stompClient.connect({}, () => {
+        stompClient.subscribe(`/topic/chatting/room/${roomId}/participants`, (message) => {
+            let body = JSON.parse(message.body);
+            if (body.type === 'ARRIVE') {
+                const outer = document.createElement('div');
+                outer.id = body.username;
+                outer.classList.add('list-group-item');
+
+                const inner = document.createElement('div');
+                inner.innerText = body.username;
+                outer.append(inner);
+
+                document.querySelector('.connect-users').append(outer);
+            } else if (body.type === 'LEAVE') {
+                document.querySelector(`#${body.username}`).remove();
+            }
+        });
+        stompClient.subscribe(`/topic/chatting/room/${roomId}/chatting`, (message) => {
+            let body = JSON.parse(message.body);
+
+            const outer = document.createElement('div');
+            outer.id=body.id;
+            outer.classList.add('list-group-item');
+            outer.classList.add('mb-2');
+
+            const messageAuthor = document.createElement('div');
+            messageAuthor.innerText = 'Author : ' + body.username;
+            outer.append(messageAuthor);
+
+            const messageBody = document.createElement('div');
+            messageBody.innerText = body.message;
+            outer.append(messageBody);
+
+            const createdDate = document.createElement('div');
+            createdDate.innerText = body.createdDate;
+            outer.append(createdDate);
+
+            messageBox.append(outer);
+            messageBox.scrollTo(0, messageBox.scrollHeight);
+        });
+        stompClient.send(`/app/chatting/room/${roomId}/arrive`, {}, {});
+    });
+
+    window.onbeforeunload = (event) => {
+        event.preventDefault();
+        if (stompClient !== null) {
+            stompClient.send(`/app/chatting/room/${roomId}/leave`, {}, {});
+            stompClient.disconnect();
+        }
+    };
+
+    const messageInput = document.querySelector('#input_message');
+    const messageInputBtn = document.querySelector('#input_message_btn');
+
+    const sendMessage = (message) => {
+        stompClient.send(`/app/chatting/room/${roomId}/chatting`, {}, JSON.stringify({'message': message}));
+        messageInput.value='';
+    };
+
+    messageInput.addEventListener("keyup", (event) => {
+        if (event.keyCode === 13) {
+            event.preventDefault();
+            sendMessage(messageInput.value);
+        }
+    })
+
+    messageInputBtn.addEventListener('click', (event) => {
+        sendMessage(messageInput.value);
+    })
+
+    messageBox.scrollTo(0, messageBox.scrollHeight);
+</script>
+</html>

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout/mainLayout :: layout (~{::title}, ~{::main}, ~{::script})}">
+<title>ChattingDemo</title>
+<main style="height: 100vh; width: 100vh" class="d-flex flex-column align-items-center">
+    <div class="mb-4 fs-1 text-center">
+        Chatting Demo with Spring Socket
+    </div>
+    <form method="post" action="/login" class="d-flex flex-column align-items-center">
+        <div class="mb-3">
+            <label for="input_username">Username : </label>
+            <input id="input_username" name="username" type="text"/>
+        </div>
+        <div class="mb-4">
+            <label for="input_username">Password : </label>
+            <input id="input_password" name="password" type="password"/>
+        </div>
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <button type="submit">Login</button>
+    </form>
+    <a class="mt-4" th:href="@{/account/sign-up}">Sign Up</a>
+</main>
+<script>
+</script>
+</html>
